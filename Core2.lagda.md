@@ -130,6 +130,16 @@ module Language {R : Set} {{mod : POSemiring R}} where
   domain = map (λ { ( id := _ ) → id })
 
 
+  -- 
+  data CEmpty : ∀ {Δ : List ContextElem} → Context Δ → Set where
+    Ø-empty : CEmpty Ø
+    #-empty : ∀ {Δ : List ContextElem} {Γ₁ : Context Δ} {x : Id} {A : Type}
+            → CEmpty Γ₁
+              ---------
+            → CEmpty (Γ₁ # x :⟨ zero' ⟩ A)
+    
+
+
 
   data WellTyped : {Δ : List ContextElem} → (Γ : Context Δ) → (x : Term) → (A : Type) → Set₁
   infix 14 WellTyped
@@ -139,7 +149,8 @@ module Language {R : Set} {{mod : POSemiring R}} where
 
     ST-Var :  {Δ : List ContextElem} {x : Id} {Γ : Context Δ} {A : Type} →
 
-                x ∉ domain Δ
+                CEmpty Γ
+              → x ∉ domain Δ
                   --------
               → ( (zero' ** Γ) # x :⟨ one' ⟩ A ) ⊢ (` x) :' A
 
@@ -195,7 +206,7 @@ pxe : "x" ≢ "f"
 pxe = λ()
 
 example : (Ø # "f" :⟨ 1 ⟩ Unit -⟨ 3 ⟩→ Unit  # "x" :⟨ 3 ⟩ Unit ) ⊢ ((` "f") · (` "x")) :' Unit
-example = ST-App (ST-Weak ((λ {(here px) → pxe px; (there ()) })) (ST-Var (λ())) ) (ST-Var (λ {(here px) → pxe px; (there ()) }))
+example = ST-App (ST-Weak ((λ {(here px) → pxe px; (there ()) })) (ST-Var Ø-empty (λ()) )) (ST-Var (#-empty Ø-empty) (λ {(here px) → pxe px; (there ()) }))
 --example = ST-App ((ST-Weak (λ {(here px) → pxe px; (there ()) }) (ST-Var λ()) )) (ST-Var {!!})
 -- example = ST-App ( ST-Weak (λ {(here px) → {!!} ; (there pxs) → (λ()) pxs}) ( ST-Var (λ())) ) (ST-Var (λ {(here px) → (λ()) px ; (there pxs) → (λ()) pxs}))
 ```
