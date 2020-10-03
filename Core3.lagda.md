@@ -220,40 +220,47 @@ module Language {R : Set} {{mod : POSemiring R}} where
                -----------
              → Γ ⊢ A -⟨ q ⟩→ B
 
-    _·_ : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A B q}
-        → Γ₁ ⊢ A -⟨ q ⟩→ B
-        → Γ₂ ⊢ A
-        → (q ** Γ₂ ++ Γ₁) ⊢ B
+    appP : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A B θ q}
+          → θ ≡ q ** Γ₂ ++ Γ₁
+          → Γ₁ ⊢ A -⟨ q ⟩→ B
+          → Γ₂ ⊢ A
+          → θ ⊢ B
 
-    unit : ∀ {Δ} {Γ : Context Δ} -- changed to allow zeroed out context
-         → (zero' ** Γ) ⊢ Unit
+    unitP : ∀ {Δ} {θ : Context Δ} Γ -- changed to allow zeroed out context
+           → θ ≡ zero' ** Γ
+           → θ ⊢ Unit
 
-    let-unit≔_in'_ : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A}
+    unitElimP : ∀ {Δ} {A θ} {Γ₁ Γ₂ : Context Δ}
+                   → θ ≡ Γ₁ ++ Γ₂
                    → Γ₁ ⊢ Unit
                    → Γ₂ ⊢ A
-                   → (Γ₁ ++ Γ₂) ⊢ A
-  
-    box⟨_⟩_ : ∀ {Δ} {Γ : Context Δ} {A} (q : R)
+                   → θ ⊢ A
+
+    boxP : ∀ {Δ} {Γ θ : Context Δ} {A} (q : R)
+            → θ ≡ q ** Γ
             → Γ ⊢ A
-            → (q ** Γ) ⊢ [ q ] A
+            → θ ⊢ [ q ] A
 
     -- interesting case
-    let-box≔_in'_ : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {q A B}
+    boxElimP : ∀ {Δ} {Γ₁ Γ₂ θ : Context Δ} {q A B}
+                  → θ ≡ Γ₁ ++ Γ₂
                   → Γ₁ ⊢ [ q ] A
                   → Γ₂ ,:⟨ q ⟩ A ⊢ B
-                  → Γ₁ ++ Γ₂ ⊢ B
+                  → θ ⊢ B
 
-    ⟨_,_⟩ : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A B}
+    pairP : ∀ {Δ} {Γ₁ Γ₂ θ : Context Δ} {A B}
+          → θ ≡ Γ₁ ++ Γ₂
           → Γ₁ ⊢ A
           → Γ₂ ⊢ B
             ------
-          → (Γ₁ ++ Γ₂) ⊢ A ⊗ B
+          → θ ⊢ A ⊗ B
 
-    let⟨,⟩≔_in'_ : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A₁ A₂ B}
-                   → Γ₁ ⊢ A₁ ⊗ A₂
-                   → Γ₂ ,:⟨ one' ⟩ A₁ ,:⟨ one' ⟩ A₂ ⊢ B
-                     ------------
-                   → (Γ₁ ++ Γ₂) ⊢ B
+    pairElimP : ∀ {Δ} {Γ₁ Γ₂ θ : Context Δ} {A₁ A₂ B}
+              → θ ≡ Γ₁ ++ Γ₂
+              → Γ₁ ⊢ A₁ ⊗ A₂
+              → Γ₂ ,:⟨ one' ⟩ A₁ ,:⟨ one' ⟩ A₂ ⊢ B
+                ------------
+              → θ ⊢ B
 
     -- had to make non mixfix to allow specifying implicit argument
     inj₁ : ∀ {Δ} {Γ : Context Δ} {A B}
@@ -266,23 +273,80 @@ module Language {R : Set} {{mod : POSemiring R}} where
             ------
           → Γ ⊢ A ⊕ B
 
-    case⟨_⟩_of_||_ : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A₁ A₂ B}
-                   → (q : R)
-                   → Γ₁ ⊢ A₁ ⊕ A₂
-                   → Γ₂ ⊢ A₁ -⟨ q ⟩→ B
-                   → Γ₂ ⊢ A₂ -⟨ q ⟩→ B
-                     ---------
-                   → (q ** Γ₁ ++ Γ₂) ⊢ B
+    sumElimP : ∀ {Δ} {Γ₁ Γ₂ θ : Context Δ} {A₁ A₂ B}
+             → (q : R)
+             → θ ≡ q ** Γ₁ ++ Γ₂
+             → Γ₁ ⊢ A₁ ⊕ A₂
+             → Γ₂ ⊢ A₁ -⟨ q ⟩→ B
+             → Γ₂ ⊢ A₂ -⟨ q ⟩→ B
+               ---------
+             → θ ⊢ B
 
   infix 25 `_
+
+  -- needed to refactor some terms to have proofs passed in (for subst)
+  -- but step relation doesn't require these proofs
+  _·_ : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A B q}
+      → Γ₁ ⊢ A -⟨ q ⟩→ B
+      → Γ₂ ⊢ A
+        ------
+      → q ** Γ₂ ++ Γ₁ ⊢ B
+  a · b = appP refl a b
+
+  unit : ∀ {Δ} {Γ : Context Δ} -- changed to allow zeroed out context
+       → (zero' ** Γ) ⊢ Unit
+  unit {Γ = Γ} = unitP Γ refl
+
+  let-unit≔_in'_ : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A}
+                 → Γ₁ ⊢ Unit
+                 → Γ₂ ⊢ A
+                   -------
+                 → (Γ₁ ++ Γ₂) ⊢ A
+  let-unit≔ u in' a = unitElimP refl u a
+  
+  box⟨_⟩_ : ∀ {Δ} {Γ : Context Δ} {A} (q : R)
+          → Γ ⊢ A
+          → (q ** Γ) ⊢ [ q ] A
+  box⟨ q ⟩ a = boxP q refl a
+
+  let-box≔_in'_ : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {q A B}
+                → Γ₁ ⊢ [ q ] A
+                → Γ₂ ,:⟨ q ⟩ A ⊢ B
+                → Γ₁ ++ Γ₂ ⊢ B
+  let-box≔ b in' a = boxElimP refl b a
+
+  ⟨_,_⟩ : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A B}
+        → Γ₁ ⊢ A
+        → Γ₂ ⊢ B
+          ------
+        → Γ₁ ++ Γ₂ ⊢ A ⊗ B
+  ⟨ a , b ⟩ = pairP refl a b
+
+  let⟨,⟩≔_in'_ : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A₁ A₂ B}
+               → Γ₁ ⊢ A₁ ⊗ A₂
+               → Γ₂ ,:⟨ one' ⟩ A₁ ,:⟨ one' ⟩ A₂ ⊢ B
+                 ------------
+               → Γ₁ ++ Γ₂ ⊢ B
+  let⟨,⟩≔ p in' b = pairElimP refl p b
+
+  case⟨_⟩_of_||_ : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A₁ A₂ B}
+                 → (q : R)
+                 → Γ₁ ⊢ A₁ ⊕ A₂
+                 → Γ₂ ⊢ A₁ -⟨ q ⟩→ B
+                 → Γ₂ ⊢ A₂ -⟨ q ⟩→ B
+                   ---------
+                 → (q ** Γ₁ ++ Γ₂) ⊢ B
+  case⟨ q ⟩ s of f || g = sumElimP q refl s f g
+
   infixl 21 _·_
+  infix 23 box⟨_⟩_
   infix 22 let-unit≔_in'_
   infix 22 let-box≔_in'_
   infix 22 let⟨,⟩≔_in'_
   infix 22 case⟨_⟩_of_||_
-  infix 23 box⟨_⟩_
 
 
+{-
   ext : ∀ {Δ} {Γ : Context Δ} {q}
     → (∀ {A C} → Γ ∋ A → Γ ,:⟨ zero' ⟩ C ∋ A)
     → (∀ {A B C} → Γ ,:⟨ q ⟩ B ∋ A → Γ ,:⟨ zero' ⟩ C ,:⟨ q ⟩ B ∋ A)
@@ -322,13 +386,25 @@ module Language {R : Set} {{mod : POSemiring R}} where
   subst f (inj₁ a) = {!!}
   subst f (inj₂ a) = {!!}
   subst f (case⟨ q ⟩ a of a₁ || a₂) = {!!}
+  -}
 
-  postulate
-    _[_] : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A B q} → (Γ₁ ,:⟨ q ⟩ A ⊢ B) → (Γ₂ ⊢ A) → q ** Γ₂ ++ Γ₁ ⊢ B
+  _[_] : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A B q} → (Γ₁ ,:⟨ q ⟩ A ⊢ B) → (Γ₂ ⊢ A) → q ** Γ₂ ++ Γ₁ ⊢ B
+  (` x) [ b ] = ?
+  (ƛ:⟨ q ⟩ A ⇒ a) [ b ] = ?
+  appP x a a₁ [ b ] = ?
+  unitP Γ x [ b ] = ?
+  unitElimP x a a₁ [ b ] = ?
+  boxP q x a [ b ] = ?
+  boxElimP x a a₁ [ b ] = ?
+  pairP x a a₁ [ b ] = ?
+  pairElimP x a a₁ [ b ] = ?
+  inj₁ a [ b ] = ?
+  inj₂ a [ b ] = ?
+  sumElimP q x a a₁ a₂ [ b ] = ?
 
 
 
-  data Value {Δ} : ∀ {Γ : Context Δ} {A} → Γ ⊢ A → Set where
+  data Value {Δ} : ∀ {Γ : Context Δ} {A} → Γ ⊢ A → Set₁ where
 
     V-Var : ∀ {Γ : Context Δ} {A}
           → (v : Γ ∋ A)
@@ -355,7 +431,7 @@ module Language {R : Set} {{mod : POSemiring R}} where
 
 
   -- small step call by name
-  data _⟶_ {Δ} : ∀ {Γ : Context Δ} {A} → Γ ⊢ A → Γ ⊢ A → Set where
+  data _⟶_ {Δ} : ∀ {Γ : Context Δ} {A} → Γ ⊢ A → Γ ⊢ A → Set₁ where
 
     S-AppCong : ∀ {Γ : Context Δ} {A B q} {a a' : Γ ⊢ A -⟨ q ⟩→ B} {b : Γ ⊢ A}
               → a ⟶ a'
@@ -426,11 +502,12 @@ open Language {ℕ} {{nat-pos}}
 example : Ø ⊢ Unit
 example = (ƛ:⟨ 1 ⟩ Unit ⇒ (` Z {Γ = Ø})) · unit {Γ = Ø}
 -- example = (ƛ:⟨ 1 ⟩ Unit ⇒ (` Z)) · unit
-
+{-
 not : Ø ⊢ Unit ⊕ Unit -⟨ 1 ⟩→ Unit ⊕ Unit
 not = ƛ:⟨ 1 ⟩ Unit ⊕ Unit ⇒ (case⟨ 1 ⟩ ` Z of
   ƛ:⟨ 1 ⟩ Unit ⇒ (inj₂ (` Z))
   || (ƛ:⟨ 1 ⟩ Unit ⇒ (inj₁ (` Z)) ))
+-}
 
 ```
 
