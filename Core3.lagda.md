@@ -13,11 +13,12 @@ open import Agda.Builtin.Equality
 open import Agda.Builtin.Equality.Rewrite
 
 open import Relation.Nullary using (¬_)
+open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Nat
 open import Data.Nat.Properties using (+-comm; +-assoc; +-identity; *-assoc; *-identity; *-zero; ≤-reflexive; ≤-antisym; ≤-trans)
-open import Data.Product using (_×_; proj₁; proj₂; ∃; ∃-syntax) 
+open import Data.Product using (_×_; proj₁; proj₂; ∃; ∃-syntax; _,_) 
 open import Data.String using (String)
-open import Data.List using (List; map; []; _∷_; zip)
+open import Data.List using (List; map; []; _∷_; zip; length) renaming (_++_ to _<>'_)
 open import Function using (_∘_)
 open import Data.List.Membership.Propositional
 open import Data.List.Relation.Unary.Any using (Any; here; there)
@@ -74,6 +75,11 @@ module Language {R : Set} {{mod : POSemiring R}} where
   +'-comm = POSemiring.+-comm' mod
   +'-assoc = POSemiring.+-assoc' mod
 
+```
+
+## Basic definitions
+
+```
 
   data Type : Set₁ where
     Unit : Type
@@ -93,6 +99,8 @@ module Language {R : Set} {{mod : POSemiring R}} where
     _,:⟨_⟩_ : {Δ : List Type} →
                     Context Δ → R → ∀ (A : Type) → Context ( A ∷ Δ )
 
+
+
   zeroCtx : (Δ : List Type) → Context Δ
   zeroCtx [] = Ø
   zeroCtx (x ∷ Δ) = (zeroCtx Δ) ,:⟨ zero' ⟩ x
@@ -111,6 +119,12 @@ module Language {R : Set} {{mod : POSemiring R}} where
   Ø ++ Ø = Ø
   (Γ₁ ,:⟨ q1 ⟩ A)  ++ (Γ₂ ,:⟨ q2 ⟩ .A)  =  (Γ₁ ++ Γ₂) ,:⟨ q1 +' q2 ⟩ A
 
+  -- context concat
+  _<>_ : {Δ₁ Δ₂ : List Type} → (Γ₂ : Context Δ₂) → (Γ₁ : Context Δ₁) → Context (Δ₁ <>' Δ₂)
+  b <> Ø = b
+  b <> (a ,:⟨ x ⟩ A) = (b <> a) ,:⟨ x ⟩ A
+
+  infixl 7 _<>_
 
   -- context arithmetic laws
   -- ========================
@@ -135,7 +149,13 @@ module Language {R : Set} {{mod : POSemiring R}} where
   ++-identity (Γ ,:⟨ x ⟩ A) 
              rewrite ++-identity Γ | proj₁ +'-identity x = refl
 
+  ++-identity2 : ∀ {Δ} → (Γ : Context Δ) → Γ ++ zeroCtx Δ ≡ Γ
+  ++-identity2 Ø = refl
+  ++-identity2 (Γ ,:⟨ x ⟩ A) 
+              rewrite ++-identity2 Γ | proj₂ +'-identity x = refl
+
   {-# REWRITE ++-identity #-}
+  {-# REWRITE ++-identity2 #-}
 
   one-** : ∀ {Δ} (Γ : Context Δ) → one' ** Γ ≡ Γ
   one-** Ø = refl
@@ -164,6 +184,7 @@ module Language {R : Set} {{mod : POSemiring R}} where
 -}
   {-# REWRITE one-** #-}
   {-# REWRITE ++-swap #-}
+  -- {-# REWRITE <>-identity #-}
   -- {-# REWRITE ++-comm #-}
   -- {-# REWRITE ++-assoc #-}
   
@@ -176,13 +197,38 @@ module Language {R : Set} {{mod : POSemiring R}} where
               ---------
               → CEmpty (Γ₁ ,:⟨ zero' ⟩ A)
 
+  empty-concat : ∀ {Δ₁ Δ₂} {Γ₁ : Context Δ₁} {Γ₂ : Context Δ₂}
+               → CEmpty (Γ₂ <> Γ₁)
+               → CEmpty Γ₁ × CEmpty Γ₂
+  empty-concat {Γ₁ = Ø} {Γ₂ = Γ₂} emp = Ø-empty , emp
+  empty-concat {Γ₁ = Γ₁ ,:⟨ .zero' ⟩ A} {Γ₂ = Γ₂} (,-empty emp)
+               with empty-concat {Γ₂ = Γ₂} emp
+  ...             | l , r = ,-empty l , r
 
+  postulate
+    empty-concat2 :  ∀ {Δ₁ Δ₂} {Γ₁ : Context Δ₁} {Γ₂ : Context Δ₂}
+                → CEmpty Γ₁
+                → CEmpty Γ₂
+                → CEmpty (Γ₂ <> Γ₁)
+
+
+  empty-zeroCtx : ∀ {Δ} {Γ : Context Δ} → CEmpty Γ → Γ ≡ zeroCtx Δ
+  empty-zeroCtx {_} {.Ø} Ø-empty = refl
+  empty-zeroCtx {_} {.(_ ,:⟨ zero' ⟩ _)} (,-empty emp) rewrite empty-zeroCtx emp = refl
+
+  
+{-}
+  empty-zeroctx : ∀ {Δ} {Γ : Context Δ} → Γ ≡ zeroCtx Δ → CEmpty Γ
+  empty-zeroctx {Γ = Ø} eq = Ø-empty
+  empty-zeroctx {Γ = Γ ,:⟨ x ⟩ A} eq = {!!}
+-}
   -- LOOKUP
   data _∋_ : ∀ {Δ} → Context Δ → Type → Set₁ where
 
-    Z : ∀ {Δ} {Γ : Context Δ} {A}
-        -------
-      → (zero' ** Γ ,:⟨ one' ⟩ A) ∋ A    -- only allow empty for simplicity,
+    Zero : ∀ {Δ} {Γ : Context Δ} {A}
+         → CEmpty Γ
+           -------
+         → (Γ ,:⟨ one' ⟩ A) ∋ A    -- only allow empty for simplicity,
                               -- can introduce more via weakening
 
     S_ : ∀ {Δ} {Γ : Context Δ} {A B}
@@ -191,6 +237,11 @@ module Language {R : Set} {{mod : POSemiring R}} where
        → (Γ ,:⟨ zero' ⟩ B) ∋ A
 
   infix 5 _∋_
+
+  -- Z : ∀ {Δ} {Γ : Context Δ} {A}
+  --     -------
+  --   → (zero' ** Γ ,:⟨ one' ⟩ A) ∋ A    -- only allow empty for simplicity,
+  -- Z {Γ = Γ} = Zero {Γ = Γ} refl
 
 {-
   lookup : ∀ {Δ} → Context Δ → ℕ → Type
@@ -387,21 +438,45 @@ module Language {R : Set} {{mod : POSemiring R}} where
   subst f (inj₂ a) = {!!}
   subst f (case⟨ q ⟩ a of a₁ || a₂) = {!!}
   -}
+{-
+  var-eq : ∀ {Δ} {Γ : Context Δ} {A} → ℕ → Γ ∋ A → Bool
+  var-eq zero Z = true
+  var-eq (suc n) (S v) = var-eq n v
+  var-eq _ _ = false -}
 
-  _[_] : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A B q} → (Γ₁ ,:⟨ q ⟩ A ⊢ B) → (Γ₂ ⊢ A) → q ** Γ₂ ++ Γ₁ ⊢ B
-  (` x) [ b ] = ?
-  (ƛ:⟨ q ⟩ A ⇒ a) [ b ] = ?
-  appP x a a₁ [ b ] = ?
-  unitP Γ x [ b ] = ?
-  unitElimP x a a₁ [ b ] = ?
-  boxP q x a [ b ] = ?
-  boxElimP x a a₁ [ b ] = ?
-  pairP x a a₁ [ b ] = ?
-  pairElimP x a a₁ [ b ] = ?
-  inj₁ a [ b ] = ?
-  inj₂ a [ b ] = ?
-  sumElimP q x a a₁ a₂ [ b ] = ?
+  subst-var : ∀ {Δ₁ Δ₂} {Γ₁ : Context Δ₁} {Γ₂ : Context Δ₂} {Γ₃ : Context (Δ₁ <>' Δ₂)} {A B q}
+            → Γ₂ ,:⟨ q ⟩ B <> Γ₁ ∋ A
+            → (Γ₃ ⊢ B)
+              ---------
+            → q ** Γ₃ ++ (Γ₂ <> Γ₁) ⊢ A
+  subst-var {Γ₁ = Ø} (Zero emp) s rewrite empty-zeroCtx emp = s
+  subst-var {Γ₁ = Ø} (S x) s = ` x
+  subst-var {Δ₁} {Γ₁ = Γ₁' ,:⟨ .one' ⟩ A} (Zero emp) s rewrite ((proj₁ +'-identity) one')
+            with empty-concat {Γ₁ = Γ₁'} emp
+  ...       | l , ,-empty r = ` {!Zero (empty-concat2 l r)!}
+  subst-var {Γ₁ = Γ₁ ,:⟨ .(POSemiring.zero' mod) ⟩ A} (S x) s = {!!}
 
+  subst : ∀ {Δ₁ Δ₂} {Γ₁ : Context Δ₁} {Γ₂ : Context Δ₂} {Γ₃ : Context (Δ₁ <>' Δ₂)} {A B q}
+          (var : ℕ) {ev : length Δ₁ ≡ var}
+        → Γ₂ ,:⟨ q ⟩ B <> Γ₁ ⊢ A
+        → (Γ₃ ⊢ B)
+          ---------
+        → q ** Γ₃ ++ (Γ₂ <> Γ₁) ⊢ A
+  subst v (` x) s = subst-var x s
+  subst v (ƛ:⟨ q₁ ⟩ A ⇒ a) s = {!!}
+  subst v (appP x a a₁) s = {!!}
+  subst v (unitP Γ x) s = {!!}
+  subst v (unitElimP x a a₁) s = {!!}
+  subst v (boxP q₁ x a) s = {!!}
+  subst v (boxElimP x a a₁) s = {!!}
+  subst v (pairP x a a₁) s = {!!}
+  subst v (pairElimP x a a₁) s = {!!}
+  subst v (inj₁ a) s = {!!}
+  subst v (inj₂ a) s = {!!}
+  subst v (sumElimP q₁ x a a₁ a₂) s = {!!}
+
+  _[_] : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A B q} → (Γ₁ ,:⟨ q ⟩ B ⊢ A) → (Γ₂ ⊢ B) → q ** Γ₂ ++ Γ₁ ⊢ A
+  _[_] = {!!}
 
 
   data Value {Δ} : ∀ {Γ : Context Δ} {A} → Γ ⊢ A → Set₁ where
@@ -499,8 +574,8 @@ module Language {R : Set} {{mod : POSemiring R}} where
 ```
 open Language {ℕ} {{nat-pos}}
 
-example : Ø ⊢ Unit
-example = (ƛ:⟨ 1 ⟩ Unit ⇒ (` Z {Γ = Ø})) · unit {Γ = Ø}
+-- example : Ø ⊢ Unit
+-- example = (ƛ:⟨ 1 ⟩ Unit ⇒ (` Z {Γ = Ø})) · unit {Γ = Ø}
 -- example = (ƛ:⟨ 1 ⟩ Unit ⇒ (` Z)) · unit
 {-
 not : Ø ⊢ Unit ⊕ Unit -⟨ 1 ⟩→ Unit ⊕ Unit
