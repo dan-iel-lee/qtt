@@ -51,34 +51,39 @@ weaken (inj₂ a) = {!!}
 weaken (sumElimP q x a a₁ a₂) = {!!}
 
 
-subst-var : ∀ {Δ₁ Δ₂} {Γ₁ : Context Δ₁} {Γ₂ : Context Δ₂} {Γ₃ : Context (Δ₁ <>' Δ₂)} {A B q}
-          → Γ₂ ,:⟨ q ⟩ B <> Γ₁ ∋ A
-          → (Γ₃ ⊢ B)
-            ---------
-          → q ** Γ₃ ++ (Γ₂ <> Γ₁) ⊢ A
+subst-var : ∀ {Δ₁ Δ₂} {Γ₁ : Context Δ₁} {Γ₂ : Context Δ₂} {A}
+          → (x : Γ₁ ∋ A)
+          → (s : Γ₂ ⊢ A)
+          → (y : Γ₁ ∋ A)
+          → Γ₂ ⊢ A
 subst-var = {!!}
 
-subst : ∀ {Δ₁ Δ₂} {Γ₁ : Context Δ₁} {Γ₂ : Context Δ₂} {Γ₃ : Context (Δ₁ <>' Δ₂)} {A B q}
-        (var : ℕ) {ev : length Δ₁ ≡ var}
-      → Γ₂ ,:⟨ q ⟩ B <> Γ₁ ⊢ A
-      → (Γ₃ ⊢ B)
-        ---------
-      → q ** Γ₃ ++ (Γ₂ <> Γ₁) ⊢ A
-subst v (` x) s = subst-var x s
-subst v (ƛ:⟨ q₁ ⟩ A ⇒ a) s = ƛ:⟨ q₁ ⟩ A ⇒ subst (v + 1) {{!!}} a {!s!} -- need to be able to weaken s
-subst v (appP x a a₁) s = {!!}
-subst v (unitP Γ) s = {!!}
-subst v (unitElimP x a a₁) s = {!!}
-subst v (boxP q₁ x a) s = {!!}
-subst v (boxElimP x a a₁) s = {!!}
-subst v (pairP x a a₁) s = {!!}
-subst v (pairElimP x a a₁) s = {!!}
-subst v (inj₁ a) s = {!!}
-subst v (inj₂ a) s = {!!}
-subst v (sumElimP q₁ x a a₁ a₂) s = {!!}
+
+subst' : ∀ {Δ₁ Δ₂} {Ω₁ : Context Δ₁} {Ω₂ : Context Δ₂} 
+       → (∀ {A} {Γ₁ : Context Δ₁} {Γ₂ : Context Δ₂} → Γ₁ ∋ A → Γ₂ ⊢ A)
+       → (∀ {B} → Ω₁ ⊢ B → Ω₂ ⊢ B)
+subst' f (` x) = f x
+subst' f (ƛ:⟨ q ⟩ A ⇒ b) = {!!}
+subst' f (appP x b b₁) = {!!}
+subst' f (unitP x) = {!!}
+subst' f (unitElimP x b b₁) = {!!}
+subst' f (boxP q x b) = {!!}
+subst' f (boxElimP x b b₁) = {!!}
+subst' f (pairP x b b₁) = {!!}
+subst' f (pairElimP x b b₁) = {!!}
+subst' f (inj₁ b) = {!!}
+subst' f (inj₂ b) = {!!}
+subst' f (sumElimP q x b b₁ b₂) = {!!}
+
+
+
 
 _[_] : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A B q} → (Γ₁ ,:⟨ q ⟩ B ⊢ A) → (Γ₂ ⊢ B) → q ** Γ₂ ++ Γ₁ ⊢ A
-_[_] = {!!}
+_[_] {Δ} {Γ₁} {Γ₂} {A} {B} {q} a s = subst' {_} {_} {Γ₁ ,:⟨ q ⟩ B} {q ** Γ₂ ++ Γ₁} f {A} a
+  where
+    f : ∀ {A} {Γ₁ : Context (B ∷ Δ)} {Γ₂ : Context Δ} → Γ₁ ∋ A → Γ₂ ⊢ A
+    f (Z emp) = {!s!}
+    f (S t) = {!!}
 {-
 
 data Value {Δ} : ∀ {Γ : Context Δ} {A} → Γ ⊢ A → Set₁ where
