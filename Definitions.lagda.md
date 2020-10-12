@@ -101,6 +101,28 @@ b <> Ø = b
 b <> (a ,:⟨ x ⟩ A) = (b <> a) ,:⟨ x ⟩ A
 
 
+-- context inductive relations
+data _≈_**_++_ : ∀ {Δ : List Type} → Context Δ → R → Context Δ → Context Δ → Set where
+  CArith-Emp : ∀ {Δ} {Γ Γ₁ : Context Δ} {q}
+             → CEmpty Γ₁ ⊎ q ≡ zero'
+             → Γ ≈ q ** Γ₁ ++ Γ
+
+  CArith-, : ∀ {Δ} {Θ Γ₁ Γ₂ : Context Δ} {A q₁ q₂ q q'}
+           → (Θ ≈ q ** Γ₁ ++ Γ₂)
+           → (q' ≡ q *' q₁ +' q₂)
+           → (Θ ,:⟨ q' ⟩ A) ≈ q ** (Γ₁ ,:⟨ q₁ ⟩ A) ++ (Γ₂ ,:⟨ q₂ ⟩ A)
+
+-- data _≈_!+_ : ListType → List Type → Type → Set
+--   LIns-Nil : 
+
+data _≈_*_#_ : ∀ {Δ₁ Δ₂ : List Type} → Context Δ₂ → R → Context Δ₂ → Context Δ₁ → Set₁ where
+  CSurr-Z : ∀ {Δ} {Γ Γ₁ : Context Δ} {q A}
+          → CEmpty Γ₁ ⊎ q ≡ zero'
+          → (Γ ,:⟨ q ⟩ A) ≈ q * Γ₁ ,:⟨ one' ⟩ A # Γ
+
+  CSurr-S : ∀ {Δ₁ Δ₂} {q q' B} {Γ Γ₁ : Context Δ₁} {Γ₂ : Context Δ₂}
+          → Γ ≈ q * Γ₁ # Γ₂
+          → (Γ ,:⟨ q' ⟩ B) ≈ q * (Γ₁ ,:⟨ zero' ⟩ B) # (Γ₂ ,:⟨ q' ⟩ B)
 ```
 
 ### Terms
@@ -140,7 +162,7 @@ data _⊢_ where
             → Γ ⊢ A -⟨ q ⟩→ B
 
   appP : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A B θ q}
-        → θ ≡ q ** Γ₂ ++ Γ₁
+        → θ ≈ q ** Γ₂ ++ Γ₁
         → Γ₁ ⊢ A -⟨ q ⟩→ B
         → Γ₂ ⊢ A
         → θ ⊢ B
@@ -274,28 +296,6 @@ infix 25 `_
 
 
 
--- context inductive relations
-data _≈_**_++_ : ∀ {Δ : List Type} → Context Δ → R → Context Δ → Context Δ → Set where
-  CArith-Emp : ∀ {Δ} {Γ Γ₁ : Context Δ} {q}
-             → CEmpty Γ₁ ⊎ q ≡ zero'
-             → Γ ≈ q ** Γ₁ ++ Γ
-
-  CArith-, : ∀ {Δ} {Θ Γ₁ Γ₂ : Context Δ} {A q₁ q₂ q q'}
-           → (Θ ≈ q ** Γ₁ ++ Γ₂)
-           → (q' ≡ q *' q₁ +' q₂)
-           → (Θ ,:⟨ q' ⟩ A) ≈ q ** (Γ₁ ,:⟨ q₁ ⟩ A) ++ (Γ₂ ,:⟨ q₂ ⟩ A)
-
--- data _≈_!+_ : ListType → List Type → Type → Set
---   LIns-Nil : 
-
-data _≈_*_#_ : ∀ {Δ₁ Δ₂ : List Type} → Context Δ₂ → R → Context Δ₂ → Context Δ₁ → Set₁ where
-  CSurr-Z : ∀ {Δ} {Γ Γ₁ : Context Δ} {q A}
-          → CEmpty Γ₁ ⊎ q ≡ zero'
-          → (Γ ,:⟨ q ⟩ A) ≈ q * Γ₁ ,:⟨ one' ⟩ A # Γ
-
-  CSurr-S : ∀ {Δ₁ Δ₂} {q q' B} {Γ Γ₁ : Context Δ₁} {Γ₂ : Context Δ₂}
-          → Γ ≈ q * Γ₁ # Γ₂
-          → (Γ ,:⟨ q' ⟩ B) ≈ q * (Γ₁ ,:⟨ zero' ⟩ B) # (Γ₂ ,:⟨ q' ⟩ B)
 
 zero-like : R → Set
 zero-like x = ∀ {y : R} → x *' y ≡ zero'
@@ -335,14 +335,14 @@ var-split {_} {_} {.(_ ,:⟨ POSemiring.zero' mod ⟩ _)} {Ω₁} {Ω} (S x) p y
 subst : ∀ {Δ₁ Δ₂} {Γ₁ : Context Δ₁} {Γ₂ Ω : Context Δ₂} {Ω₁ Ω₂ q A}
       → (x : Γ₁ ∋ A)
       → (s : Γ₂ ⊢ A)
-      → (Ω₁ ≈ q * Γ₁ # Ω)
-      → (Ω₂ ≈ q ** Γ₂ ++ Ω)
+      → Ω₁ ≈ q * Γ₁ # Ω
+      → Ω₂ ≈ q ** Γ₂ ++ Ω
       → (∀ {B} → Ω₁ ⊢ B → Ω₂ ⊢ B)
 subst {_} {_} {Γ₁} {Γ₂} {Ω} {Ω₁} {Ω₂} x s p1 p2 {B} (` x₁) with var-help x p1 x₁
 ...                    | inj₁ qz = ` (zero-ctx-eq (subs≡ (λ g → Ω₂ ≈ g ** Γ₂ ++ Ω ) qz p2) (subs≡ (λ g → Ω₁ ≈ g * Γ₁ # Ω) qz p1) x₁)
 ...                    | inj₂ qo = cont-exc (**++-eq p2 (proj₁ qo) (proj₂ qo)) (type-exc (cont-type-exc x (subs≡ (λ g → g ∋ B) ((sym (**#-eq p1 (proj₁ qo) (proj₂ qo)))) x₁)) s)
 subst x s p1 p2 (ƛ:⟨ q ⟩ A ⇒ b) = {!!}
-subst x s p1 p2 (appP x₁ b b₁) = {!!}
+subst x s p1 p2 (appP x₁ b b₁) = appP {!!} (subst x s {!!} {!!} b) (subst x s {!!} {!!} b₁)
 subst x s p1 p2 (unitP x₁) = {!!}
 subst x s p1 p2 (unitElimP x₁ b b₁) = {!!}
 subst x s p1 p2 (boxP q x₁ b) = {!!}
