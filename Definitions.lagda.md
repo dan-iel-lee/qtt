@@ -18,7 +18,7 @@ open import Data.Bool using (Bool; true; false; if_then_else_)
 open import Data.Nat
 open import Data.Nat.Properties using (+-comm; +-assoc; +-identity; *-assoc; *-identity; *-zero; ≤-reflexive; ≤-antisym; ≤-trans)
 open import Data.Sum using (_⊎_; inj₁; inj₂)
-open import Data.Product using (_×_; proj₁; proj₂; ∃; ∃-syntax; _,_) 
+open import Data.Product using (_×_; proj₁; proj₂; ∃; ∃-syntax; _,_; Σ; Σ-syntax) 
 open import Data.String using (String)
 open import Data.List using (List; map; []; _∷_; zip; length) renaming (_++_ to _<>'_)
 open import Function using (_∘_)
@@ -26,9 +26,12 @@ open import Data.List.Membership.Propositional
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.Empty
 
+open import Relation.Nullary.Decidable using (⌊_⌋; True)
+
 
 _*'_ = POSemiring._*'_ mod
 _+'_ = POSemiring._+'_ mod
+_≛_ = POSemiring._≛_ mod
 zero' = POSemiring.zero' mod
 one' = POSemiring.one' mod
 
@@ -84,13 +87,13 @@ data CEmpty : ∀ {Δ : List Type} → Context Δ → Set where
 
 -- context scaling
 _**_ : {Δ : List Type} → R → Context Δ → Context Δ
-infix 10 _**_
+infixl 10 _**_
 _ ** Ø = Ø
 a ** (Γ ,:⟨ q ⟩ A)  =  (a ** Γ) ,:⟨ a *' q ⟩ A
 
 -- context addition
 _++_ : {Δ : List Type} → (Γ₁ : Context Δ) → (Γ₂ : Context Δ) → Context Δ
-infix 9 _++_
+infixl 9 _++_
 Ø ++ Ø = Ø
 (Γ₁ ,:⟨ q1 ⟩ A)  ++ (Γ₂ ,:⟨ q2 ⟩ .A)  =  (Γ₁ ++ Γ₂) ,:⟨ q1 +' q2 ⟩ A
 
@@ -162,66 +165,85 @@ data _⊢_ where
             → Γ ⊢ A -⟨ q ⟩→ B
 
   appP : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A B θ q}
-        → θ ≈ q ** Γ₂ ++ Γ₁
+        → θ ≡ q ** Γ₂ ++ Γ₁
         → Γ₁ ⊢ A -⟨ q ⟩→ B
         → Γ₂ ⊢ A
         → θ ⊢ B
+-- data _⊢_ where
+--   --
+--   `_ : ∀ {Δ} {Γ : Context Δ}  {A}
+--       → Γ ∋ A
+--         -----
+--       → Γ ⊢ A
 
-  unitP : ∀ {Δ} {Γ : Context Δ} -- changed to allow zeroed out context
-          → CEmpty Γ
-          → Γ ⊢ Unit
+--   ƛ:⟨_⟩_⇒_ : ∀ {Δ} {Γ : Context Δ} {B}
+--             → (q : R)
+--             → (A : Type)
+--             → Γ ,:⟨ q ⟩ A ⊢ B
+--               -----------
+--             → Γ ⊢ A -⟨ q ⟩→ B
 
-  unitElimP : ∀ {Δ} {A θ} {Γ₁ Γ₂ : Context Δ}
-                  → θ ≡ Γ₁ ++ Γ₂
-                  → Γ₁ ⊢ Unit
-                  → Γ₂ ⊢ A
-                  → θ ⊢ A
+--   appP : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A B θ q}
+--         → θ ≡ q ** Γ₂ ++ Γ₁
+--         → Γ₁ ⊢ A -⟨ q ⟩→ B
+--         → Γ₂ ⊢ A
+--         → θ ⊢ B
 
-  boxP : ∀ {Δ} {Γ θ : Context Δ} {A} (q : R)
-          → θ ≡ q ** Γ
-          → Γ ⊢ A
-          → θ ⊢ [ q ] A
+--   unitP : ∀ {Δ} {Γ : Context Δ} -- changed to allow zeroed out context
+--           → CEmpty Γ
+--           → Γ ⊢ Unit
 
-  -- interesting case
-  boxElimP : ∀ {Δ} {Γ₁ Γ₂ θ : Context Δ} {q A B}
-                → θ ≡ Γ₁ ++ Γ₂
-                → Γ₁ ⊢ [ q ] A
-                → Γ₂ ,:⟨ q ⟩ A ⊢ B
-                → θ ⊢ B
+--   unitElimP : ∀ {Δ} {A θ} {Γ₁ Γ₂ : Context Δ}
+--                   → θ ≡ Γ₁ ++ Γ₂
+--                   → Γ₁ ⊢ Unit
+--                   → Γ₂ ⊢ A
+--                   → θ ⊢ A
 
-  pairP : ∀ {Δ} {Γ₁ Γ₂ θ : Context Δ} {A B}
-        → θ ≡ Γ₁ ++ Γ₂
-        → Γ₁ ⊢ A
-        → Γ₂ ⊢ B
-          ------
-        → θ ⊢ A ⊗ B
+--   boxP : ∀ {Δ} {Γ θ : Context Δ} {A} (q : R)
+--           → θ ≡ q ** Γ
+--           → Γ ⊢ A
+--           → θ ⊢ [ q ] A
 
-  pairElimP : ∀ {Δ} {Γ₁ Γ₂ θ : Context Δ} {A₁ A₂ B}
-            → θ ≡ Γ₁ ++ Γ₂
-            → Γ₁ ⊢ A₁ ⊗ A₂
-            → Γ₂ ,:⟨ one' ⟩ A₁ ,:⟨ one' ⟩ A₂ ⊢ B
-              ------------
-            → θ ⊢ B
+--   -- interesting case
+--   boxElimP : ∀ {Δ} {Γ₁ Γ₂ θ : Context Δ} {q A B}
+--                 → θ ≡ Γ₁ ++ Γ₂
+--                 → Γ₁ ⊢ [ q ] A
+--                 → Γ₂ ,:⟨ q ⟩ A ⊢ B
+--                 → θ ⊢ B
 
-  -- had to make non mixfix to allow specifying implicit argument
-  inj₁ : ∀ {Δ} {Γ : Context Δ} {A B}
-        → Γ ⊢ A
-          -----
-        → Γ ⊢ A ⊕ B
+--   pairP : ∀ {Δ} {Γ₁ Γ₂ θ : Context Δ} {A B}
+--         → θ ≡ Γ₁ ++ Γ₂
+--         → Γ₁ ⊢ A
+--         → Γ₂ ⊢ B
+--           ------
+--         → θ ⊢ A ⊗ B
 
-  inj₂ : ∀ {Δ} {Γ : Context Δ} {A B}
-        → Γ ⊢ B
-          ------
-        → Γ ⊢ A ⊕ B
+--   pairElimP : ∀ {Δ} {Γ₁ Γ₂ θ : Context Δ} {A₁ A₂ B}
+--             → θ ≡ Γ₁ ++ Γ₂
+--             → Γ₁ ⊢ A₁ ⊗ A₂
+--             → Γ₂ ,:⟨ one' ⟩ A₁ ,:⟨ one' ⟩ A₂ ⊢ B
+--               ------------
+--             → θ ⊢ B
 
-  sumElimP : ∀ {Δ} {Γ₁ Γ₂ θ : Context Δ} {A₁ A₂ B}
-            → (q : R)
-            → θ ≡ q ** Γ₁ ++ Γ₂
-            → Γ₁ ⊢ A₁ ⊕ A₂
-            → Γ₂ ⊢ A₁ -⟨ q ⟩→ B
-            → Γ₂ ⊢ A₂ -⟨ q ⟩→ B
-              ---------
-            → θ ⊢ B
+--   -- had to make non mixfix to allow specifying implicit argument
+--   inj₁ : ∀ {Δ} {Γ : Context Δ} {A B}
+--         → Γ ⊢ A
+--           -----
+--         → Γ ⊢ A ⊕ B
+
+--   inj₂ : ∀ {Δ} {Γ : Context Δ} {A B}
+--         → Γ ⊢ B
+--           ------
+--         → Γ ⊢ A ⊕ B
+
+--   sumElimP : ∀ {Δ} {Γ₁ Γ₂ θ : Context Δ} {A₁ A₂ B}
+--             → (q : R)
+--             → θ ≡ q ** Γ₁ ++ Γ₂
+--             → Γ₁ ⊢ A₁ ⊕ A₂
+--             → Γ₂ ⊢ A₁ -⟨ q ⟩→ B
+--             → Γ₂ ⊢ A₂ -⟨ q ⟩→ B
+--               ---------
+--             → θ ⊢ B
 
 infix 25 `_
 
@@ -294,64 +316,143 @@ infix 25 `_
 ### Definition properties
 ```
 
+++-identity : ∀ {Δ} → (Γ Γ₁ : Context Δ) → CEmpty Γ₁ → Γ ++ Γ₁ ≡ Γ
+++-identity Ø Ø e = refl
+++-identity (Γ ,:⟨ x ⟩ A) (Γ₁ ,:⟨ .(zero') ⟩ .A) (,-empty e) rewrite ++-identity Γ Γ₁ e | proj₂ +'-identity x = refl
 
+**-identity : ∀ {Δ} (Γ : Context Δ) → one' ** Γ ≡ Γ
+**-identity Ø = refl
+**-identity (Γ ,:⟨ x ⟩ A) rewrite **-identity Γ | (proj₁ *'-identity) x = refl
 
-
-zero-like : R → Set
-zero-like x = ∀ {y : R} → x *' y ≡ zero'
-
-one-like : R → Set
-one-like x = ∀ {y : R} → x *' y ≡ y
-
-
-
-
-
-
+-- postulate
+--   variable-help :  ∀ {Δ₁ Δ₂ q A B} {Γ₁ Θ₁ : Context Δ₁} {Γ₂ Θ₂ : Context Δ₂}
+--               → (Γ₁ ++ Θ₁) ,:⟨ q ⟩ B <> (Γ₂ ++ Θ₂) ∋ A
+--               → Γ₁ ,:⟨ q ⟩ B <> Γ₂ ∋ A
+--               → CEmpty Θ₁ × CEmpty Θ₂
+--   ++-empty : ∀ {Δ} {Γ Θ : Context Δ}
+--            → CEmpty Θ
+--            → Γ ++ Θ ≡ Γ
+--   rewrite-ctx : ∀ {Δ₁ Δ₂ A} {Γ₁ Θ₁ : Context Δ₁} {Γ₂ Θ₂ : Context Δ₂}
+--               → Γ₁ ≡ Θ₁
+--               → Γ₂ ≡ Θ₂
+--               → Γ₁ <> Γ₂ ⊢ A
+--               → Θ₁ <> Θ₂ ⊢ A
 
 postulate
-  -- in the var case, want to be able to say either q is zero (meaning the vars don't match) or q is one (meaning the vars match)
-  var-help : ∀ {Δ Δ₁} {Γ₁ Ω₁ : Context Δ₁} {Ω : Context Δ} {A B q} → (Γ₁ ∋ A) → (Ω₁ ≈ q * Γ₁ # Ω) → (Ω₁ ∋ B)
-           → q ≡ zero' ⊎ (q ≡ one' × CEmpty Ω)
-  **++-eq : ∀ {Δ} {Γ₂ Ω₂ Ω : Context Δ} {q} → (Ω₂ ≈ q ** Γ₂ ++ Ω) → (q ≡ one') → CEmpty Ω → Γ₂ ≡ Ω₂
-  **#-eq : ∀ {Δ Δ₁} {Γ₂ Ω₂ : Context Δ} {Ω : Context Δ₁} {q} → (Ω₂ ≈ q * Γ₂ # Ω) → (q ≡ one') → CEmpty Ω → Γ₂ ≡ Ω₂
-  cont-exc : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A} → Γ₁ ≡ Γ₂ → Γ₁ ⊢ A → Γ₂ ⊢ A -- is there a better way to say this? use subst?
-  type-exc : ∀ {Δ} {Γ : Context Δ} {A B} → A ≡ B → Γ ⊢ A → Γ ⊢ B
+  ctx-split : ∀ {Δ₁ Δ₂ B} {Γ : Context (Δ₂ <>' (B ∷ Δ₁))}
+            → ∃[ q ] (Σ[ Γ₁ ∈ Context Δ₁ ] (Σ[ Γ₂ ∈ Context Δ₂ ] Γ ≡ Γ₁ ,:⟨ q ⟩ B <> Γ₂))
+  ctx-map : ∀ {Δ A} {Γ₁ Γ₂ : Context Δ}
+          → Γ₁ ≡ Γ₂
+          → Γ₁ ⊢ A
+          → Γ₂ ⊢ A
 
-  zero-ctx-eq : ∀ {Δ Δ₁} {Ω Ω₂ : Context Δ} {Ω₁ : Context Δ₁} {Γ₁ Γ₂ A} → Ω₂ ≈ zero' ** Γ₂ ++ Ω → Ω₁ ≈ zero' * Γ₁ # Ω → Ω₁ ∋ A → Ω₂ ∋ A
+subst : ∀ {Δ₁ Δ₂ q' B} {Θ₃ Θ₁ : Context Δ₁} {Θ₂ : Context Δ₂}
+      → (∀ {A q} {Γ₁ : Context Δ₁} {Γ₂ : Context Δ₂} → Γ₁ ,:⟨ q ⟩ B <> Γ₂ ∋ A → q ** Θ₃ ++ Γ₁ <> Γ₂ ⊢ A)
+      → (∀ {A} → Θ₁ ,:⟨ q' ⟩ B <> Θ₂ ⊢ A
+               → ((q') ** Θ₃ ++ Θ₁) <> Θ₂ ⊢ A)
+subst f (` x) = f x
+subst f (ƛ:⟨ q ⟩ A ⇒ a) = {!!}
+-- in this case, how do you know how much quantity of q' goes to a vs a₁?
+subst f (appP x a a₁) = appP {!!} {!!} {!!}
+
+
+-- postulate
+  -- <>-empty : ∀ {Δ₁ Δ₂} {Γ₁ : Context Δ₁} {Γ₂ : Context Δ₂}
+  --          → (Γ₁ <> Ø)
+
+postulate
+  ctx-id : ∀ {Δ A} {Γ₁ Γ₂ : Context Δ}
+         → CEmpty Γ₂
+         → Γ₁ ⊢ A
+         → one' ** Γ₁ ++ Γ₂ ⊢ A
+  ctx-id2 : ∀ {Δ A} {Γ₁ Γ₂ : Context Δ}
+          → Γ₂ ⊢ A
+          → zero' ** Γ₁ ++ Γ₂ ⊢ A
+
+_[_] : ∀ {Δ} {Θ₁ Θ₂ : Context Δ} {A B q}
+     → Θ₁ ,:⟨ q ⟩ B ⊢ A
+     → Θ₂ ⊢ B
+     → q ** Θ₂ ++ Θ₁ ⊢ A
+_[_] {Δ} {Θ₁} {Θ₂} {A} {B} a b = subst {Θ₁ = Θ₁} {Θ₂ = Ø} f a
+  where
+  f : ∀ {Øctx : Context []} {A q} {Γ₁ : Context Δ} → Γ₁ ,:⟨ q ⟩ B <> Øctx ∋ A → q ** Θ₂ ++ Γ₁ <> Øctx ⊢ A
+  f {Ø} (Z x) = ctx-id x b
+  f {Ø} (S x) = ctx-id2 (` x)
+
+-- subst : ∀ {Δ₁ Δ₂ q' B} {Γ₁ Γ₃ Θ₁ : Context Δ₁} {Γ₂ Θ₂ : Context Δ₂}
+--       → (∀ {A q} → Γ₁ ,:⟨ q ⟩ B <> Γ₂ ∋ A → q ** Γ₃ ++ Γ₁ <> Γ₂ ⊢ A)
+--       → (∀ {A} → (Γ₁ ++ Θ₁) ,:⟨ q' ⟩ B <> (Γ₂ ++ Θ₂) ⊢ A
+--                → ((q') ** Γ₃ ++ Γ₁ ++ Θ₁) <> (Γ₂ ++ Θ₂) ⊢ A)
+-- subst {Θ₁ = Θ₁} {Θ₂ = Θ₂} f (` x) = {!!}
+-- subst f (ƛ:⟨ q ⟩ A ⇒ a) = {!!}
+-- subst f (appP x a a₁) = {!!}
+-- subst f (unitP x) = {!!}
+-- subst f (unitElimP x a a₁) = {!!}
+-- subst f (boxP q x a) = {!!}
+-- subst f (boxElimP x a a₁) = {!!}
+-- subst f (pairP x a a₁) = {!!}
+-- subst f (pairElimP x a a₁) = {!!}
+-- subst f (inj₁ a) = {!!}
+-- subst f (inj₂ a) = {!!}
+-- subst f (sumElimP q x a a₁ a₂) = {!!}
+
+
+
+-- zero-like : R → Set
+-- zero-like x = ∀ {y : R} → x *' y ≡ zero'
+
+-- one-like : R → Set
+-- one-like x = ∀ {y : R} → x *' y ≡ y
+
+
+
+
+
+
+
+-- postulate
+--   -- in the var case, want to be able to say either q is zero (meaning the vars don't match) or q is one (meaning the vars match)
+--   var-help : ∀ {Δ Δ₁} {Γ₁ Ω₁ : Context Δ₁} {Ω : Context Δ} {A B q} → (Γ₁ ∋ A) → (Ω₁ ≈ q * Γ₁ # Ω) → (Ω₁ ∋ B)
+--            → q ≡ zero' ⊎ (q ≡ one' × CEmpty Ω)
+--   **++-eq : ∀ {Δ} {Γ₂ Ω₂ Ω : Context Δ} {q} → (Ω₂ ≈ q ** Γ₂ ++ Ω) → (q ≡ one') → CEmpty Ω → Γ₂ ≡ Ω₂
+--   **#-eq : ∀ {Δ Δ₁} {Γ₂ Ω₂ : Context Δ} {Ω : Context Δ₁} {q} → (Ω₂ ≈ q * Γ₂ # Ω) → (q ≡ one') → CEmpty Ω → Γ₂ ≡ Ω₂
+--   cont-exc : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} {A} → Γ₁ ≡ Γ₂ → Γ₁ ⊢ A → Γ₂ ⊢ A -- is there a better way to say this? use subst?
+--   type-exc : ∀ {Δ} {Γ : Context Δ} {A B} → A ≡ B → Γ ⊢ A → Γ ⊢ B
+
+--   zero-ctx-eq : ∀ {Δ Δ₁} {Ω Ω₂ : Context Δ} {Ω₁ : Context Δ₁} {Γ₁ Γ₂ A} → Ω₂ ≈ zero' ** Γ₂ ++ Ω → Ω₁ ≈ zero' * Γ₁ # Ω → Ω₁ ∋ A → Ω₂ ∋ A
 
   
-  cont-type-exc : ∀ {Δ} {Γ : Context Δ} {A B} → Γ ∋ A → Γ ∋ B → A ≡ B
-  -- var-
+--   cont-type-exc : ∀ {Δ} {Γ : Context Δ} {A B} → Γ ∋ A → Γ ∋ B → A ≡ B
+--   -- var-
 
 
-var-split : ∀ {Δ Δ₁} {Γ₁ Ω₁ : Context Δ₁} {Ω : Context Δ} {A B q} → (Γ₁ ∋ A) → (Ω₁ ≈ q * Γ₁ # Ω) → (Ω₁ ∋ B)
-          → zero-like q ⊎ (one-like q × CEmpty Ω)
-var-split {_} {_} {.(_ ,:⟨ POSemiring.one' mod ⟩ _)} {.(_ ,:⟨ POSemiring.one' mod ⟩ _)} {Ω} (Z x) p (Z x₁) = {!!}
-var-split {_} {_} {.(_ ,:⟨ POSemiring.one' mod ⟩ _)} {.(_ ,:⟨ POSemiring.zero' mod ⟩ _)} {Ω} (Z x) p (S y) = {!!}
-var-split {_} {_} {.(_ ,:⟨ POSemiring.zero' mod ⟩ _)} {Ω₁} {Ω} (S x) p y = {!!}
+-- var-split : ∀ {Δ Δ₁} {Γ₁ Ω₁ : Context Δ₁} {Ω : Context Δ} {A B q} → (Γ₁ ∋ A) → (Ω₁ ≈ q * Γ₁ # Ω) → (Ω₁ ∋ B)
+--           → zero-like q ⊎ (one-like q × CEmpty Ω)
+-- var-split {_} {_} {.(_ ,:⟨ POSemiring.one' mod ⟩ _)} {.(_ ,:⟨ POSemiring.one' mod ⟩ _)} {Ω} (Z x) p (Z x₁) = {!!}
+-- var-split {_} {_} {.(_ ,:⟨ POSemiring.one' mod ⟩ _)} {.(_ ,:⟨ POSemiring.zero' mod ⟩ _)} {Ω} (Z x) p (S y) = {!!}
+-- var-split {_} {_} {.(_ ,:⟨ POSemiring.zero' mod ⟩ _)} {Ω₁} {Ω} (S x) p y = {!!}
 
 
-subst : ∀ {Δ₁ Δ₂} {Γ₁ : Context Δ₁} {Γ₂ Ω : Context Δ₂} {Ω₁ Ω₂ q A}
-      → (x : Γ₁ ∋ A)
-      → (s : Γ₂ ⊢ A)
-      → Ω₁ ≈ q * Γ₁ # Ω
-      → Ω₂ ≈ q ** Γ₂ ++ Ω
-      → (∀ {B} → Ω₁ ⊢ B → Ω₂ ⊢ B)
-subst {_} {_} {Γ₁} {Γ₂} {Ω} {Ω₁} {Ω₂} x s p1 p2 {B} (` x₁) with var-help x p1 x₁
-...                    | inj₁ qz = ` (zero-ctx-eq (subs≡ (λ g → Ω₂ ≈ g ** Γ₂ ++ Ω ) qz p2) (subs≡ (λ g → Ω₁ ≈ g * Γ₁ # Ω) qz p1) x₁)
-...                    | inj₂ qo = cont-exc (**++-eq p2 (proj₁ qo) (proj₂ qo)) (type-exc (cont-type-exc x (subs≡ (λ g → g ∋ B) ((sym (**#-eq p1 (proj₁ qo) (proj₂ qo)))) x₁)) s)
-subst x s p1 p2 (ƛ:⟨ q ⟩ A ⇒ b) = {!!}
-subst x s p1 p2 (appP x₁ b b₁) = appP {!!} (subst x s {!!} {!!} b) (subst x s {!!} {!!} b₁)
-subst x s p1 p2 (unitP x₁) = {!!}
-subst x s p1 p2 (unitElimP x₁ b b₁) = {!!}
-subst x s p1 p2 (boxP q x₁ b) = {!!}
-subst x s p1 p2 (boxElimP x₁ b b₁) = {!!}
-subst x s p1 p2 (pairP x₁ b b₁) = {!!}
-subst x s p1 p2 (pairElimP x₁ b b₁) = {!!}
-subst x s p1 p2 (inj₁ b) = {!!}
-subst x s p1 p2 (inj₂ b) = {!!}
-subst x s p1 p2 (sumElimP q x₁ b b₁ b₂) = {!!}
+-- subst : ∀ {Δ₁ Δ₂} {Γ₁ : Context Δ₁} {Γ₂ Ω : Context Δ₂} {Ω₁ Ω₂ q A}
+--       → (x : Γ₁ ∋ A)
+--       → (s : Γ₂ ⊢ A)
+--       → Ω₁ ≈ q * Γ₁ # Ω
+--       → Ω₂ ≈ q ** Γ₂ ++ Ω
+--       → (∀ {B} → Ω₁ ⊢ B → Ω₂ ⊢ B)
+-- subst {_} {_} {Γ₁} {Γ₂} {Ω} {Ω₁} {Ω₂} x s p1 p2 {B} (` x₁) with var-help x p1 x₁
+-- ...                    | inj₁ qz = ` (zero-ctx-eq (subs≡ (λ g → Ω₂ ≈ g ** Γ₂ ++ Ω ) qz p2) (subs≡ (λ g → Ω₁ ≈ g * Γ₁ # Ω) qz p1) x₁)
+-- ...                    | inj₂ qo = cont-exc (**++-eq p2 (proj₁ qo) (proj₂ qo)) (type-exc (cont-type-exc x (subs≡ (λ g → g ∋ B) ((sym (**#-eq p1 (proj₁ qo) (proj₂ qo)))) x₁)) s)
+-- subst x s p1 p2 (ƛ:⟨ q ⟩ A ⇒ b) = {!!}
+-- subst x s p1 p2 (appP x₁ b b₁) = appP {!!} (subst x s {!!} {!!} b) (subst x s {!!} {!!} b₁)
+-- subst x s p1 p2 (unitP x₁) = {!!}
+-- subst x s p1 p2 (unitElimP x₁ b b₁) = {!!}
+-- subst x s p1 p2 (boxP q x₁ b) = {!!}
+-- subst x s p1 p2 (boxElimP x₁ b b₁) = {!!}
+-- subst x s p1 p2 (pairP x₁ b b₁) = {!!}
+-- subst x s p1 p2 (pairElimP x₁ b b₁) = {!!}
+-- subst x s p1 p2 (inj₁ b) = {!!}
+-- subst x s p1 p2 (inj₂ b) = {!!}
+-- subst x s p1 p2 (sumElimP q x₁ b b₁ b₂) = {!!}
 
 -- subst .(Z em) s {CSurr-Z em} (` Z x) = subst-var {!!} {!!} {!!}
 -- subst .(Z em) s {CSurr-Z em} (` (S x₁)) = subst-var {!!} {!!} {!!}

@@ -7,6 +7,7 @@ open import Data.Product using (_×_; proj₁; proj₂; ∃; ∃-syntax; _,_)
 
 open import Data.Nat
 open import Data.Nat.Properties using (+-comm; +-assoc; +-identity; *-assoc; *-identity; *-zero; ≤-reflexive; ≤-antisym; ≤-trans)
+open import Relation.Binary using (Decidable)
 
 record POSemiring (A : Set) : Set₁ where
   field
@@ -28,6 +29,8 @@ record POSemiring (A : Set) : Set₁ where
     ≤'-antisym : ∀ {a b : A} → a ≤' b → b ≤' a → a ≡ b
     ≤'-trans : ∀ {a b c : A} → a ≤' b → b ≤' c → a ≤' c
 
+    _≛_ : Decidable {A = A} _≡_
+
 nat-pos : POSemiring ℕ
 nat-pos = record
             { _+'_ = _+_
@@ -44,4 +47,5 @@ nat-pos = record
             ; ≤'-refl = λ { {a} → ≤-reflexive {a} refl }
             ; ≤'-antisym = ≤-antisym
             ; ≤'-trans = ≤-trans
+            ; _≛_ = _≟_
             }

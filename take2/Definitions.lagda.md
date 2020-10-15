@@ -69,26 +69,48 @@ data TContext : Set₁ where
   ∅ : TContext
   _,_ : TContext → Type → TContext
 
-data QContext : Set where
-  Ø : QContext
-  _$_ : QContext → R → QContext
+data QContext : TContext → Set₁ where
+  Ø : QContext ∅
+  _,⟨_⟩_ : {Δ : TContext} →
+          QContext Δ → R → ∀ (A : Type) → QContext ( Δ , A )
+infixl 8 _,⟨_⟩_
 
+
+-- TODO: make DECIDABLE
 -- inductive definition of an empty context
-data CEmpty : QContext → Set where
+data CEmpty : ∀ {Δ} → QContext Δ → Set where
   Ø-empty : CEmpty Ø
-  $-empty : ∀ {Δ A}
-          → CEmpty Δ
+  $-empty : ∀ {Δ} {Γ : QContext Δ} {A}
+          → CEmpty Γ
             ---------
-          → CEmpty (Δ $ A)
+          → CEmpty (Γ ,⟨ zero' ⟩ A)
 
-data CCompat : QContext → TContext → Set where
-  Ø~∅ : CCompat Ø ∅
-  $~, : ∀ {Γ Δ q A}
-      → CCompat Γ Δ
-      → CCompat (Γ $ q) (Δ , A)
+_++_ : TContext → TContext → TContext
+Δ ++ ∅ = Δ
+Δ ++ (Δ₁ , A) = (Δ ++ Δ₁) , A
+
+_<>_ : ∀ {Δ₁ Δ₂} (Γ₁ : QContext Δ₁) (Γ₂ : QContext Δ₂) → QContext (Δ₁ ++ Δ₂)
+Γ <> Ø = Γ
+Γ <> (Γ₁ ,⟨ q ⟩ A) = (Γ <> Γ₁) ,⟨ q ⟩ A
+
+infixl 5 _++_
+infixl 5 _<>_
 
 -- context operations
-data _≈_⨂_⨁_ : QContext → R → QContext → QContext → Set where
+data _≈_⨂_⨁_ : ∀ {Δ} → QContext Δ → R → QContext Δ → QContext Δ → Set where
+
+  CArith-Emp : ∀ {Δ} {Γ Γ₁ : QContext Δ} {q}
+             → CEmpty Γ₁
+             → Γ ≈ q ⨂ Γ₁ ⨁ Γ
+
+  CArith-Zero :  ∀ {Δ} {Γ Γ₁ : QContext Δ} {q}
+              → q ≡ zero'
+              → Γ ≈ q ⨂ Γ₁ ⨁ Γ
+
+  CArith-, : ∀ {Δ} {Θ Γ₁ Γ₂ : QContext Δ} {A q₁ q₂ q q'}
+           → (Θ ≈ q ⨂ Γ₁ ⨁ Γ₂)
+           → (q' ≡ q *' q₁ +' q₂)
+           → (Θ ,⟨ q' ⟩ A) ≈ q ⨂ (Γ₁ ,⟨ q₁ ⟩ A) ⨁ (Γ₂ ,⟨ q₂ ⟩ A)
 
 ```
 
@@ -106,7 +128,7 @@ data _∋_ : TContext → Type → Set where
       ---------
     → Δ , B ∋ A
 
-infix 5 _∋_
+infix 3 _∋_
 
 
 -- inductive definition of terms with intrinsic typing
@@ -136,30 +158,29 @@ infix 25 `_
 
 -- well quantified
 -- TODO: define what it means for a term to be well quantified
-data _⊨_ : ∀ {Δ A} → QContext → Δ ⊢ A → Set₁
+data _⊨_ : ∀ {Δ A} → QContext Δ → Δ ⊢ A → Set₁
 infix 1 _⊨_
 
 data _⊨_ where
 
-  VarZ : ∀ {Γ Δ A}
-       → CCompat Γ Δ  -- ensure contexts are same length
+  VarZ : ∀ {Δ} {Γ : QContext Δ} {A}
        → CEmpty Γ     -- context must be  Ø $ 0 $ ... $ 0 $ 1
-       → (Γ $ one') ⊨ (` (Z {Δ} {A}))
+       → (Γ ,⟨ one' ⟩ A) ⊨ (` Z)
 
   -- variable weakening
-  VarS : ∀ {Γ Δ A B x}
+  VarS : ∀ {Δ A B} {Γ : QContext Δ} {x : Δ ∋ A}
        → Γ ⊨ ` x
-       → (Γ $ zero') ⊨ ` (S_ {Δ} {A} {B} x)
+       → (Γ ,⟨ zero' ⟩ B) ⊨ ` (S x)
 
-  Lambda : ∀ {Γ Δ q A B b}
-         → _⊨_ {Δ , A} {B} (Γ $ q) b -- need b to be well quantified under context with q As
+  Lambda : ∀ {Δ q A B} {Γ : QContext Δ} {b : Δ , A ⊢ B}
+         → (Γ ,⟨ q ⟩ A) ⊨ b -- need b to be well quantified under context with q As
          → Γ ⊨ (ƛ:⟨ q ⟩ A ⇒ b)
 
-  App : ∀ {Γ Γ₁ Γ₂ Δ A B q a b}
+  App : ∀ {Δ A B q} {Γ Γ₁ Γ₂ : QContext Δ} {a : Δ ⊢ A -⟨ q ⟩→ B} {b : Δ ⊢ A}
       → Γ ≈ q ⨂ Γ₂ ⨁ Γ₁
       → Γ₁ ⊨ a
       → Γ₂ ⊨ b
-      → Γ ⊨ _·_ {Δ} {A} {B} {q} a b
+      → Γ ⊨ a · b
 
 ```
 
@@ -196,6 +217,60 @@ subst : ∀ {Δ₁ Δ₂}
 subst f (` x) = f x
 subst f (ƛ:⟨ q ⟩ A ⇒ b) = ƛ:⟨ q ⟩ A ⇒ subst (exts f) b
 subst f (b · b₁) = subst f b · subst f b₁
+
+
+_[_] : ∀ {Δ A B}
+     → Δ , B ⊢ A
+     → Δ ⊢ B
+     → Δ ⊢ A
+_[_] {Δ} {A} {B} a b = subst {Δ , B} f a
+  where
+    f : ∀ {A} → Δ , B ∋ A → Δ ⊢ A
+    f Z = b  -- how is this okay? since b is for a fixed type B
+    f (S x) = ` x
+
+
+
+
+
+-- -- alternative sub
+-- subst' : ∀ {Δ₁ Δ₂ A B}
+--        → Δ₁ , B ++ Δ₂ ⊢ A
+--        → Δ₁ ⊢ B
+--        → Δ₁ , B ++ Δ₂ ∋ A
+--        → Δ₁ ++ Δ₂ ⊢ A
+-- subst' (` x₁) b x = {!!}
+-- subst' (ƛ:⟨ q ⟩ A ⇒ a) b x = {!!}
+-- subst' (a · a₁) b x = {!!}
+
 ```
 
+## Properties
+```
 
+postulate
+  times-eq : ∀ {Δ} {Γ Γ₁ Γ₂ : QContext Δ} → Γ ≈ one' ⨂ Γ₂ ⨁ Γ₁ → CEmpty Γ₁ → Γ ≡ Γ₂
+
+
+f-quant f = ∀ (a : Δ₁ , B ++ Δ₂ ∋ A₁) → 
+
+substitution : ∀ {Δ A B} (Γ₁ Γ₂ Γ : QContext Δ) (a : Δ , B ⊢ A) (b : Δ ⊢ B)
+               (q : R)
+             → Γ₁ ,⟨ q ⟩ B ⊨ a
+             → Γ₂ ⊨ b
+             → Γ ≈ q ⨂ Γ₂ ⨁ Γ₁
+             → Γ ⊨ a [ b ]
+substitution Γ₁ Γ₂ Γ .(` Z) b .(one') (VarZ x) Qb eq = subs≡ (λ qc → qc ⊨ b) (sym (times-eq eq x)) Qb
+substitution Γ₁ Γ₂ Γ .(` (S _)) b .(POSemiring.zero' mod) (VarS Qa) Qb eq = {!!}
+substitution Γ₁ Γ₂ Γ .(ƛ:⟨ _ ⟩ _ ⇒ _) b q (Lambda Qa) Qb eq = {!!}
+substitution Γ₁ Γ₂ Γ .(_ · _) b q (App x Qa Qa₁) Qb eq = {!!}
+
+substitution' : ∀ {Δ₁ Δ₂ A B} {Γ₁ : QContext Δ₁} {Γ₂ : QContext Δ₂} {Γ Γ₃ : QContext (Δ₁ ++ Δ₂)}
+                {f : ∀ {A₁} → Δ₁ , B ++ Δ₂ ∋ A₁ → Δ₁ ++ Δ₂ ⊢ A₁}
+                (a : Δ₁ , B ++ Δ₂ ⊢ A)
+                (q : R)
+               → (∀ {x} → Γ₃ ⊨ (f {B} x))
+              → Γ₁ ,⟨ q ⟩ B <> Γ₂ ⊨ a
+              → Γ ≈ q ⨂ Γ₃ ⨁ Γ₁
+              → Γ <> Γ₂ ⊨ (subst f a)
+```
