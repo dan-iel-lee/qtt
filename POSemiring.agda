@@ -29,6 +29,11 @@ record POSemiring (A : Set) : Set₁ where
     ≤'-antisym : ∀ {a b : A} → a ≤' b → b ≤' a → a ≡ b
     ≤'-trans : ∀ {a b c : A} → a ≤' b → b ≤' c → a ≤' c
 
+    -- add monotonicity with addition and multiplication
+    -- Axiom po_semiring1 : forall a b c , a <= b -> a + c <= b + c. 
+    -- Axiom po_semiring2 : forall a b c , a <= b -> a * c <= b * c. 
+    -- Axiom po_semiring3 : forall a b c , a <= b -> c * a <= c * b. 
+
     _≛_ : Decidable {A = A} _≡_
 
 nat-pos : POSemiring ℕ

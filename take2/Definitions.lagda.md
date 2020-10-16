@@ -252,7 +252,7 @@ postulate
   times-eq : ∀ {Δ} {Γ Γ₁ Γ₂ : QContext Δ} → Γ ≈ one' ⨂ Γ₂ ⨁ Γ₁ → CEmpty Γ₁ → Γ ≡ Γ₂
 
 
-f-quant f = ∀ (a : Δ₁ , B ++ Δ₂ ∋ A₁) → 
+-- f-quant f = ∀ (a : Δ₁ , B ++ Δ₂ ∋ A₁) → 
 
 substitution : ∀ {Δ A B} (Γ₁ Γ₂ Γ : QContext Δ) (a : Δ , B ⊢ A) (b : Δ ⊢ B)
                (q : R)
