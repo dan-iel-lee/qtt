@@ -329,17 +329,34 @@ infix 25 `_
 ### Definition properties
 ```
 
-⨁-identity : ∀ {Δ} → (Γ Γ₁ : Context Δ) → CEmpty Γ₁ → Γ ⨁ Γ₁ ≡ Γ
-⨁-identity Ø Ø e = refl
-⨁-identity (Γ ,:⟨ x ⟩ A) (Γ₁ ,:⟨ .(zero') ⟩ .A) (,-empty e) rewrite ⨁-identity Γ Γ₁ e | proj₂ +'-identity x = refl
+⨁-identity : ∀ {Δ} → {Γ Γ₁ : Context Δ} → CEmpty Γ₁ → Γ ⨁ Γ₁ ≡ Γ
+⨁-identity {_} {Ø} {Ø} e = refl
+⨁-identity {_} {Γ ,:⟨ x ⟩ A} {Γ₁ ,:⟨ .(zero') ⟩ .A} (,-empty e) rewrite ⨁-identity {_} {Γ} {Γ₁} e | proj₂ +'-identity x = refl
 
 ⨂-identity : ∀ {Δ} (Γ : Context Δ) → one' ⨂ Γ ≡ Γ
 ⨂-identity Ø = refl
 ⨂-identity (Γ ,:⟨ x ⟩ A) rewrite ⨂-identity Γ | (proj₁ *'-identity) x = refl
 
+⨁-assoc : ∀ {Δ} {Γ₁ Γ₂ Γ₃ : Context Δ} → Γ₁ ⨁ (Γ₂ ⨁ Γ₃) ≡ (Γ₁ ⨁ Γ₂) ⨁ Γ₃
+⨁-assoc {.∅} {Ø} {Ø} {Ø} = refl
+⨁-assoc {.(_ , A)} {Γ₁ ,:⟨ x ⟩ A} {Γ₂ ,:⟨ x₁ ⟩ .A} {Γ₃ ,:⟨ x₂ ⟩ .A}
+  rewrite ⨁-assoc {_} {Γ₁} {Γ₂} {Γ₃}
+  | sym (+'-assoc x x₁ x₂) = refl
+
+
+⨁-comm : ∀ {Δ} {Γ₁ Γ₂ : Context Δ} → Γ₁ ⨁ Γ₂ ≡ Γ₂ ⨁ Γ₁
+⨁-comm {_} {Ø} {Ø} = refl
+⨁-comm {_} {Γ₁ ,:⟨ x₁ ⟩ .A} {Γ₂ ,:⟨ x ⟩ A}
+  rewrite ⨁-comm {_} {Γ₁} {Γ₂}
+  | +'-comm x x₁ = refl
+
+
 postulate
   ⨂-⨁-distrib : ∀ {Δ q} {Γ₁ Γ₂ : Context Δ} → q ⨂ (Γ₁ ⨁ Γ₂) ≡ q ⨂ Γ₁ ⨁ q ⨂ Γ₂
   ⨂-<>-distrib : ∀ {Δ q} {Γ₁ Γ₂ : Context Δ} → q ⨂ (Γ₁ <> Γ₂) ≡ q ⨂ Γ₁ <> q ⨂ Γ₂
+  ⨂-to-*' : ∀ {Δ q r} {Γ : Context Δ} → q ⨂ (r ⨂ Γ) ≡ (q *' r) ⨂ Γ
+  <>-⨁-distrib : ∀ {Δ₁ Δ₂} {Γ₁ Θ₁ : Context Δ₁} {Γ₂ Θ₂ : Context Δ₂}
+                 → (Γ₁ <> Γ₂) ⨁ (Θ₁ <> Θ₂) ≡ (Γ₁ ⨁ Θ₁) <> (Γ₂ ⨁ Θ₂)
 
 -- postulate
 --   variable-help :  ∀ {Δ₁ Δ₂ q A B} {Γ₁ Θ₁ : Context Δ₁} {Γ₂ Θ₂ : Context Δ₂}
@@ -420,15 +437,21 @@ subst {q' = q'} {Θ₃ = Θ₃} {Θ₁ = Θ₁} {Θ₂ = Θ₂} eq1 f (appP {_} 
     q ⨂ (r₂ ⨂ Θ₃ ⨁ E₁ <> E₂) ⨁ (r₁ ⨂ Θ₃ ⨁ D₁ <> D₂)
   ≡⟨ cong (_⨁ (r₁ ⨂ Θ₃ ⨁ D₁ <> D₂)) ⨂-<>-distrib ⟩
     (q ⨂ (r₂ ⨂ Θ₃ ⨁ E₁) <> (q ⨂ E₂)) ⨁ (r₁ ⨂ Θ₃ ⨁ D₁ <> D₂)
-  ≡⟨ {!!} ⟩
+  ≡⟨ cong (λ g → (g  <> (q ⨂ E₂)) ⨁ (r₁ ⨂ Θ₃ ⨁ D₁ <> D₂)) ⨂-⨁-distrib ⟩
     (q ⨂ (r₂ ⨂ Θ₃) ⨁ (q ⨂ E₁) <> (q ⨂ E₂)) ⨁ (r₁ ⨂ Θ₃ ⨁ D₁ <> D₂)
-  ≡⟨ {!!} ⟩
+  ≡⟨ cong (λ g → (g ⨁ (q ⨂ E₁) <> (q ⨂ E₂)) ⨁ (r₁ ⨂ Θ₃ ⨁ D₁ <> D₂)) ⨂-to-*' ⟩ -- ⨂ --> *'
     ((q *' r₂) ⨂ Θ₃ ⨁ (q ⨂ E₁) <> (q ⨂ E₂)) ⨁ (r₁ ⨂ Θ₃ ⨁ D₁ <> D₂)
-  ≡⟨ {!!} ⟩
+  ≡⟨ <>-⨁-distrib ⟩ -- ⨁ distributing over <>
     ((q *' r₂) ⨂ Θ₃ ⨁ (q ⨂ E₁) ⨁ (r₁ ⨂ Θ₃ ⨁ D₁)) <> (q ⨂ E₂ ⨁ D₂)
-  ≡⟨ {!!} ⟩
-    {!!}
-  ≡⟨ {!!} ⟩
+  ≡⟨ cong (_<> (q ⨂ E₂ ⨁ D₂)) ⨁-assoc ⟩ -- associativity ⨁
+    (((q *' r₂) ⨂ Θ₃ ⨁ (q ⨂ E₁) ⨁ r₁ ⨂ Θ₃) ⨁ D₁) <> (q ⨂ E₂ ⨁ D₂)
+  ≡⟨ {!!} ⟩ -- ⨁ comm
+    (((q *' r₂) ⨂ Θ₃ ⨁ (r₁ ⨂ Θ₃) ⨁ (q ⨂ E₁)) ⨁ D₁) <> (q ⨂ E₂ ⨁ D₂)
+  ≡⟨ {!!} ⟩ -- ⨁ assoc
+    ((q *' r₂) ⨂ Θ₃ ⨁ (r₁ ⨂ Θ₃) ⨁ ((q ⨂ E₁) ⨁ D₁)) <> (q ⨂ E₂ ⨁ D₂)
+  ≡⟨ {!!} ⟩ -- reverse ⨂ distrib
+    ((q *' r₂ +' r₁) ⨂ Θ₃ ⨁ ((q ⨂ E₁) ⨁ D₁)) <> (q ⨂ E₂ ⨁ D₂)
+  ≡⟨ {!!} ⟩ -- reverse ⨂ distrib
     ((q *' r₂ +' r₁) ⨂ Θ₃ ⨁ (q ⨂ E₁ ⨁ D₁)) <> (q ⨂ E₂ ⨁ D₂)
   ≡⟨ cong (λ g → (g ⨂ Θ₃ ⨁ (q ⨂ E₁ ⨁ D₁)) <> (q ⨂ E₂ ⨁ D₂)) (sym qp) ⟩
     (q' ⨂ Θ₃ ⨁ (q ⨂ E₁ ⨁ D₁)) <> (q ⨂ E₂ ⨁ D₂)
